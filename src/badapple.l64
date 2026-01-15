@@ -1,0 +1,82 @@
+;
+; MIT License
+;
+; Copyright (c) 2026 cr4zyengineer
+;
+; Permission is hereby granted, free of charge, to any person obtaining a copy
+; of this software and associated documentation files (the "Software"), to deal
+; in the Software without restriction, including without limitation the rights
+; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+; copies of the Software, and to permit persons to whom the Software is
+; furnished to do so, subject to the following conditions:
+;
+; The above copyright notice and this permission notice shall be included in all
+; copies or substantial portions of the Software.
+;
+; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+; SOFTWARE.
+;
+
+%define% FB_ENABLED 0x1FE00700
+%define% FB_PALLETE 0x1FE00701
+%define% FB_FRAMEBUFFER 0x1FE00A01
+%define% FRAMEBUFFER_SIZE 0x10000
+
+%define% PLATFORM_PWR 0x1FE00500
+
+%define% VIDEO_BASE __la64_exec_img_end
+
+%define% WIDTH 0x100
+
+%define% FRAMESIZE      0x2000
+%define% FB_STRIDE      0x100
+%define% PACKED_STRIDE  0x20
+%define% FRAMESIZE_WPS  0x1FE0
+
+_start:
+    stb 0x1FE00703, 0x40            ; change white color on pallet
+    stb 0x1FE00A00, 0xFF            ; change dark color on pallet
+    stb 0x1FE009FF, 0x50
+    stb 0x1FE009FE, 0xFF
+    stb FB_ENABLED, 1               ; enables the framebuffer
+    mov r0, FB_FRAMEBUFFER          ; set framebuffer base
+    jmp .start_video                ; jumping to video start
+.next_frame:
+    dec r20                         ; decrement r20
+    jnz r20, .skip_video_loop       ; jumping to video loop on r20 zero
+.start_video:
+    mov r20, 6520
+    mov r4, VIDEO_BASE
+.skip_video_loop:
+    mov r8, r0
+    mov r7, r4
+    add r7, FRAMESIZE_WPS
+    mov r10, r0
+    add r10, FRAMEBUFFER_SIZE
+.row_loop:
+    mov r1, r8
+    mov r2, r7
+    mov r9, WIDTH
+.col_loop:
+    ldb r3, r2
+    pdep rr, r3, 0x0101010101010101  ; spread bits to byte
+    mul  rr, rr, 0xFF                ; expand to bytes
+    bswapq rr
+    stq r1, rr
+    add r2, 1
+    add r1, 8
+    sub r9, 8
+    jnz r9, .col_loop
+    add r8, FB_STRIDE
+    sub r7, PACKED_STRIDE
+    cmp r8, r10
+    jlt .row_loop
+    add r4, FRAMESIZE
+    jmp .next_frame
+.end:
+    stb PLATFORM_PWR, 0
