@@ -39,44 +39,22 @@
 %define% FRAMESIZE_WPS  0x1FE0
 
 _start:
-    stb 0x1FE00703, 0x40            ; change white color on pallet
-    stb 0x1FE00A00, 0xFF            ; change dark color on pallet
-    stb 0x1FE009FF, 0x50
-    stb 0x1FE009FE, 0xFF
-    stb FB_ENABLED, 1               ; enables the framebuffer
-    mov r0, FB_FRAMEBUFFER          ; set framebuffer base
-    jmp .start_video                ; jumping to video start
-.next_frame:
-    dec r20                         ; decrement r20
-    jnz r20, .skip_video_loop       ; jumping to video loop on r20 zero
-.start_video:
-    mov r20, 6520
-    mov r4, VIDEO_BASE
-.skip_video_loop:
-    mov r8, r0
-    mov r7, r4
-    add r7, FRAMESIZE_WPS
-    mov r10, r0
-    add r10, FRAMEBUFFER_SIZE
-.row_loop:
-    mov r1, r8
-    mov r2, r7
-    mov r9, WIDTH
-.col_loop:
+    stb FB_ENABLED, 1                   ; enables the framebuffer
+.video_entry:
+    add r1, FB_FRAMEBUFFER, 0x10000     ; calculating the framebuffer end
+    mov r2, VIDEO_BASE
+.video_reloop:
+    mov r0, FB_FRAMEBUFFER
+.video_loop:
     ldb r3, r2
-    pdep rr, r3, 0x0101010101010101  ; spread bits to byte
-    mul  rr, rr, 0xFF                ; expand to bytes
-    bswapq rr
-    stq r1, rr
-    add r2, 1
-    add r1, 8
-    sub r9, 8
-    jnz r9, .col_loop
-    add r8, FB_STRIDE
-    sub r7, PACKED_STRIDE
-    cmp r8, r10
-    jlt .row_loop
-    add r4, FRAMESIZE
-    jmp .next_frame
+    pdep r4, r3, 0x0101010101010101     ; spread bits to byte
+    mul  r4, r4, 0xFF                   ; expand to bytes
+    bswapq r4
+    stq r0, r4
+    add r0, 8
+    inc r2
+    cmp r0, r1
+    jlt .video_loop
+    jmp .video_reloop
 .end:
     stb PLATFORM_PWR, 0
