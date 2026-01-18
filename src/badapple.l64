@@ -31,19 +31,17 @@
 
 %define% VIDEO_BASE __la64_exec_img_end
 
-%define% WIDTH 0x100
-
-%define% FRAMESIZE      0x2000
-%define% FB_STRIDE      0x100
-%define% PACKED_STRIDE  0x20
-%define% FRAMESIZE_WPS  0x1FE0
-
 _start:
     stb FB_ENABLED, 1                   ; enables the framebuffer
 .video_entry:
     add r1, FB_FRAMEBUFFER, 0x10000     ; calculating the framebuffer end
     mov r2, VIDEO_BASE
+.video_rereloop:
+    mov r2, VIDEO_BASE
+    mov r5, 0
 .video_reloop:
+    cmp r5, 6520
+    jgt .video_rereloop
     mov r0, FB_FRAMEBUFFER
 .video_loop:
     ldb r3, r2
@@ -55,6 +53,7 @@ _start:
     inc r2
     cmp r0, r1
     jlt .video_loop
+    inc r5
     jmp .video_reloop
 .end:
     stb PLATFORM_PWR, 0
